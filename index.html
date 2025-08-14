@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CRUD Clientes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .formulario {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: auto;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+        }
+        input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            padding: 10px;
+            background: #3498db;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        table {
+            width: 95%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background: #3498db;
+            color: white;
+        }
+        tr:hover {
+            background: #f1f1f1;
+        }
+        .mensaje {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .exito {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Gestión de Clientes</h1>
+
+<div class="formulario">
+    <input type="number" id="id_client" placeholder="ID Cliente">
+    <input type="text" id="name_client" placeholder="Nombre">
+    <input type="number" id="number_identification" placeholder="Número de Identificación">
+    <input type="text" id="adress" placeholder="Dirección">
+    <input type="text" id="tel" placeholder="Teléfono">
+    <input type="email" id="email" placeholder="Correo electrónico">
+    <button onclick="agregar()">Agregar</button>
+    <div id="mensaje" class="mensaje"></div>
+</div>
+
+<h2 style="text-align:center;">Lista de Clientes</h2>
+<table id="tabla">
+    <thead>
+        <tr>
+            <th>ID Cliente</th>
+            <th>Nombre</th>
+            <th>Identificación</th>
+            <th>Dirección</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+const API_URL = 'http://localhost:3000/clientes';
+
+function mostrarMensaje(texto, tipo) {
+    const mensaje = document.getElementById('mensaje');
+    mensaje.textContent = texto;
+    mensaje.className = `mensaje ${tipo}`;
+    setTimeout(() => mensaje.textContent = '', 3000);
+}
+
+// Cargar clientes
+function cargar() {
+    fetch(API_URL)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#tabla tbody');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.id_client}</td>
+                    <td><input value="${row.name_client}" onchange="editar(${row.id_client}, this.value, ${row.number_identification}, '${row.adress || ''}', '${row.tel || ''}', '${row.email || ''}')"></td>
+                    <td><input value="${row.number_identification}" onchange="editar(${row.id_client}, '${row.name_client}', this.value, '${row.adress || ''}', '${row.tel || ''}', '${row.email || ''}')"></td>
+                    <td><input value="${row.adress || ''}" onchange="editar(${row.id_client}, '${row.name_client}', ${row.number_identification}, this.value, '${row.tel || ''}', '${row.email || ''}')"></td>
+                    <td><input value="${row.tel || ''}" onchange="editar(${row.id_client}, '${row.name_client}', ${row.number_identification}, '${row.adress || ''}', this.value, '${row.email || ''}')"></td>
+                    <td><input value="${row.email || ''}" onchange="editar(${row.id_client}, '${row.name_client}', ${row.number_identification}, '${row.adress || ''}', '${row.tel || ''}', this.value)"></td>
+                    <td>
+                        <button style="background:red;" onclick="eliminar(${row.id_client})">Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+// Add client
+function agregar() {
+    const id_client = document.getElementById('id_client').value.trim();
+    const name_client = document.getElementById('name_client').value.trim();
+    const number_identification = document.getElementById('number_identification').value.trim();
+    const adress = document.getElementById('adress').value.trim();
+    const tel = document.getElementById('tel').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if (!id_client || !name_client || !number_identification) {
+        mostrarMensaje('ID, Nombre y Número de Identificación son obligatorios', 'error');
+        return;
+    }
+
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_client, name_client, number_identification, adress, tel, email })
+    }).then(() => {
+        document.querySelectorAll('.formulario input').forEach(i => i.value = '');
+        mostrarMensaje('Cliente agregado con éxito', 'exito');
+        cargar();
+    }).catch(() => mostrarMensaje('Error al agregar cliente', 'error'));
+}
+
+// Edit client
+function editar(id_client, name_client, number_identification, adress, tel, email) {
+    fetch(`${API_URL}/${id_client}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_client, number_identification, adress, tel, email })
+    }).then(() => {
+        mostrarMensaje('Cliente actualizado', 'exito');
+        cargar();
+    }).catch(() => mostrarMensaje('Error al actualizar cliente', 'error'));
+}
+
+// Delete client
+function eliminar(id_client) {
+    if (confirm('¿Seguro que quieres eliminar este cliente?')) {
+        fetch(`${API_URL}/${id_client}`, { method: 'DELETE' })
+            .then(() => {
+                mostrarMensaje('Cliente eliminado', 'exito');
+                cargar();
+            })
+            .catch(() => mostrarMensaje('Error al eliminar cliente', 'error'));
+    }
+}
+
+// Start
+cargar();
+</script>
+
+</body>
+</html>
